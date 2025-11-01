@@ -1,25 +1,23 @@
-from flask import Flask, render_template, request, session, redirect, url_for, flash
+from flask import Flask, render_template, request, session, redirect, url_for, flash, jsonify
 from surprise import Reader, Dataset, KNNWithMeans
-from src.recommender import SimpleRecommender
+from src.hybrid_recommender import HybridRecommender
 from src.database import get_db_connection
 import pandas as pd
 import time
-
-
 
 # Create the Flask application
 app = Flask(__name__, template_folder='../templates', static_folder='../static')
 app.secret_key = 'a-super-secret-key-that-you-should-change'
 
-# Initialize the recommender once when the app starts
-print("Initializing recommender... this may take a moment.")
-recommender = SimpleRecommender(k=30)
-print("Recommender initialized successfully.")
+# Initialize the hybrid recommender once when the app starts
+print("Initializing hybrid recommender... this may take a moment.")
+recommender = HybridRecommender(k=30, collaborative_weight=0.7, content_weight=0.3)
+print("Hybrid recommender initialized successfully.")
 
 
 @app.route('/', methods=['GET', 'POST'])
 def home():
-    # Handles the home page and user 'login' by ID.
+    """Handles the home page and user 'login' by ID."""
     if request.method == 'POST':
         try:
             user_id = int(request.form.get('user_id'))
@@ -37,13 +35,12 @@ def home():
             flash("Please enter a valid number for the User ID.", "error")
         return redirect(url_for('home'))
 
-    # For a GET request, just display the login page
     return render_template('index.html')
 
 
 @app.route('/movies')
 def browse_movies():
-    # Displays movies and assigns a new userId if one doesn't exist.
+    """Displays movies and assigns a new userId if one doesn't exist."""
     if 'userId' not in session:
         conn = get_db_connection()
         max_user_id = conn.execute('SELECT MAX(userId) FROM ratings').fetchone()[0]
@@ -52,7 +49,7 @@ def browse_movies():
         flash(f"Welcome! You have been assigned temporary User ID: {session['userId']}", "success")
 
     conn = get_db_connection()
-    movies_df = pd.read_sql_query("SELECT movieId, title FROM movies LIMIT 100", conn)
+    movies_df = pd.read_sql_query("SELECT movieId, title, genres FROM movies LIMIT 100", conn)
     conn.close()
     movie_list = movies_df.to_dict('records')
     return render_template('movies.html', movies=movie_list)
@@ -60,7 +57,7 @@ def browse_movies():
 
 @app.route('/add_rating', methods=['POST'])
 def add_rating():
-    # Saves a user's movie rating to the database.
+    """Saves a user's movie rating to the database."""
     if 'userId' not in session:
         return redirect(url_for('browse_movies'))
     try:
@@ -77,79 +74,159 @@ def add_rating():
         )
         conn.commit()
         conn.close()
-        flash(f"Your rating of {rating} ★ has been saved to the database!", "success")
+        flash(f"Your rating of {rating} ⭐ has been saved to the database!", "success")
     except (ValueError, KeyError):
         flash("Invalid rating submission.", "error")
     return redirect(url_for('browse_movies'))
 
 
+@app.route('/api/search')
+def search_movies():
+    """API endpoint for movie search autocomplete."""
+    query = request.args.get('q', '').strip()
+
+    if not query or len(query) < 2:
+        return jsonify([])
+
+    conn = get_db_connection()
+    search_query = f"""
+           SELECT movieId, title, genres 
+           FROM movies 
+           WHERE title LIKE ? 
+           LIMIT 10
+       """
+    movies_df = pd.read_sql_query(search_query, conn, params=(f'%{query}%',))
+    conn.close()
+
+    results = movies_df.to_dict('records')
+    return jsonify(results)
+
 @app.route('/recommend')
 def recommend():
-    # Generates recommendations based on the user's saved ratings.
+    """Generates hybrid recommendations based on the user's saved ratings."""
     if 'userId' not in session:
         flash("Please rate some movies first!", "error")
         return redirect(url_for('browse_movies'))
 
     user_id = session['userId']
     conn = get_db_connection()
-    user_ratings_df = pd.read_sql_query(f"SELECT userId, movieId, rating FROM ratings WHERE userId = {user_id}", conn)
+    user_ratings_df = pd.read_sql_query(
+        f"SELECT userId, movieId, rating FROM ratings WHERE userId = {user_id}",
+        conn
+    )
 
     if len(user_ratings_df) < 3:
         flash("You need to rate at least 3 movies to get recommendations.", "error")
         conn.close()
         return redirect(url_for('browse_movies'))
 
-    # Load all ratings, including the new user's, for model training
-    all_ratings_df = pd.read_sql_query("SELECT userId, movieId, rating FROM ratings", conn)
     conn.close()
 
-    # Train a temporary model on the latest data
-    reader = Reader(rating_scale=(0.5, 5.0))
-    data = Dataset.load_from_df(all_ratings_df, reader)
-    trainset = data.build_full_trainset()
-    sim_options = {'name': 'cosine', 'user_based': True}
-    temp_model = KNNWithMeans(k=30, sim_options=sim_options)
-    temp_model.fit(trainset)
+    # Use the hybrid recommender
+    print(f"Generating hybrid recommendations for user {user_id}...")
+    predictions = recommender.get_recommendations(user_id, n=10)
 
-    # Generate predictions
-    rated_movie_ids = set(user_ratings_df['movieId'])
-    all_movie_ids = set(all_ratings_df['movieId'].unique())
-    movies_to_predict = list(all_movie_ids - rated_movie_ids)
-    predictions = [temp_model.predict(user_id, mid) for mid in movies_to_predict]
-    predictions.sort(key=lambda x: x.est, reverse=True)
-    top_predictions = predictions[:10]
-
-    # Fetch movie titles for the top predictions
+    # Fetch movie details
     recommendations = []
-    if top_predictions:
-        movie_ids = [pred.iid for pred in top_predictions]
+    if predictions:
+        movie_ids = [pred[0] for pred in predictions]
         conn = get_db_connection()
-        query = f"SELECT movieId, title FROM movies WHERE movieId IN {tuple(movie_ids)}"
+
+        # Handle single movie ID case
+        if len(movie_ids) == 1:
+            query = f"SELECT movieId, title, genres FROM movies WHERE movieId = {movie_ids[0]}"
+        else:
+            query = f"SELECT movieId, title, genres FROM movies WHERE movieId IN {tuple(movie_ids)}"
+
         movies_df = pd.read_sql_query(query, conn)
         conn.close()
-        movie_titles = movies_df.set_index('movieId')['title'].to_dict()
+        movie_info = movies_df.set_index('movieId').to_dict('index')
 
-        for pred in top_predictions:
-            recommendations.append({
-                'title': movie_titles.get(pred.iid, 'Unknown Title'),
-                'predicted_rating': round(pred.est, 2)
-            })
+        for pred in predictions:
+            movie_id, hybrid_score, collab_score, content_score = pred
+            if movie_id in movie_info:
+                recommendations.append({
+                    'movieId': movie_id,
+                    'title': movie_info[movie_id]['title'],
+                    'genres': movie_info[movie_id]['genres'],
+                    'hybrid_score': round(hybrid_score, 2),
+                    'collaborative_score': round(collab_score, 2),
+                    'content_score': round(content_score, 2)
+                })
 
     return render_template('recommend.html', recommendations=recommendations)
 
 
+@app.route('/similar/<int:movie_id>')
+def similar_movies(movie_id):
+    """Finds movies similar to the given movie based on content features."""
+    similar = recommender.get_similar_movies(movie_id, n=10)
+
+    if not similar:
+        flash(f"Movie ID {movie_id} not found.", "error")
+        return redirect(url_for('browse_movies'))
+
+    # Fetch movie details
+    movie_ids = [sim[0] for sim in similar]
+    conn = get_db_connection()
+
+    # Get the original movie info
+    original_movie = pd.read_sql_query(
+        f"SELECT title, genres FROM movies WHERE movieId = {movie_id}",
+        conn
+    ).iloc[0]
+
+    # Get similar movies info
+    if len(movie_ids) == 1:
+        query = f"SELECT movieId, title, genres FROM movies WHERE movieId = {movie_ids[0]}"
+    else:
+        query = f"SELECT movieId, title, genres FROM movies WHERE movieId IN {tuple(movie_ids)}"
+
+    movies_df = pd.read_sql_query(query, conn)
+    conn.close()
+
+    movie_info = movies_df.set_index('movieId').to_dict('index')
+
+    similar_list = []
+    for sim in similar:
+        mid, similarity = sim
+        if mid in movie_info:
+            similar_list.append({
+                'title': movie_info[mid]['title'],
+                'genres': movie_info[mid]['genres'],
+                'similarity': round(similarity * 100, 1)  # Convert to percentage
+            })
+
+    return render_template('similar.html',
+                           original_title=original_movie['title'],
+                           original_genres=original_movie['genres'],
+                           similar_movies=similar_list)
+
+
+@app.route('/explain/<int:movie_id>')
+def explain_recommendation(movie_id):
+    """Provides an explanation for why a movie was recommended."""
+    if 'userId' not in session:
+        flash("Please log in first!", "error")
+        return redirect(url_for('home'))
+
+    user_id = session['userId']
+    explanation = recommender.explain_recommendation(user_id, movie_id)
+
+    return jsonify(explanation)
+
+
 @app.route('/my-ratings')
 def my_ratings():
-    # Displays a list of all movies rated by the current user.
+    """Displays a list of all movies rated by the current user."""
     if 'userId' not in session:
         flash("You haven't rated any movies yet.", "error")
         return redirect(url_for('browse_movies'))
 
     user_id = session['userId']
     conn = get_db_connection()
-    # Join ratings with movies to get titles
     query = """
-        SELECT m.title, r.rating
+        SELECT m.title, m.genres, r.rating
         FROM ratings r JOIN movies m ON r.movieId = m.movieId
         WHERE r.userId = ? ORDER BY r.timestamp DESC
     """

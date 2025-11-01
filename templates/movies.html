@@ -6,13 +6,83 @@
     <title>Rate Movies</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        .search-container {
+            position: relative;
+            margin-bottom: 30px;
+        }
+
+        .search-results {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: none;
+        }
+
+        .search-results.show {
+            display: block;
+        }
+
+        .search-result-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .search-result-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        .search-result-title {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .search-result-genres {
+            font-size: 0.85rem;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        .no-results {
+            padding: 16px;
+            text-align: center;
+            color: #999;
+        }
+
+        .rating-input-inline {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 12px;
+        }
+    </style>
 </head>
 <body class="bg-light">
     <!-- Navigation -->
     <nav class="navbar navbar-dark bg-primary shadow-sm">
         <div class="container">
             <a class="navbar-brand" href="/">
-                <i class="bi bi-film"></i> KNN Movie Recommender
+                <i class="bi bi-film"></i> Hybrid Movie Recommender
             </a>
             <div>
                 <a href="{{ url_for('my_ratings') }}" class="btn btn-outline-light btn-sm me-2">
@@ -47,6 +117,32 @@
                   {% endif %}
                 {% endwith %}
 
+                <!-- Search Bar -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">
+                            <i class="bi bi-search"></i> Search for a Movie
+                        </h5>
+                        <div class="search-container">
+                            <input type="text"
+                                   id="movieSearch"
+                                   class="form-control form-control-lg"
+                                   placeholder="Type to search movies... (e.g., 'Toy Story', 'Matrix')"
+                                   autocomplete="off">
+                            <div class="search-results" id="searchResults">
+                                <div class="loading-spinner" id="loadingSpinner">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    Searching...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h5 class="mb-3 text-muted">Or browse popular movies:</h5>
+
                 <!-- Movie Cards -->
                 <div class="row">
                     {% for movie in movies %}
@@ -54,6 +150,9 @@
                         <div class="card h-100 shadow-sm">
                             <div class="card-body">
                                 <h5 class="card-title">{{ movie.title }}</h5>
+                                <p class="text-muted small mb-3">
+                                    <i class="bi bi-tags"></i> {{ movie.genres }}
+                                </p>
                                 <form action="/add_rating" method="post" class="mt-3">
                                     <input type="hidden" name="movieId" value="{{ movie.movieId }}">
                                     <div class="row g-2 align-items-center">
@@ -95,5 +194,123 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Autocomplete Search Script -->
+    <script>
+        const searchInput = document.getElementById('movieSearch');
+        const searchResults = document.getElementById('searchResults');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        let searchTimeout;
+
+        // Handle search input
+        searchInput.addEventListener('input', function() {
+            const query = this.value.trim();
+
+            // Clear previous timeout
+            clearTimeout(searchTimeout);
+
+            // Hide results if query is too short
+            if (query.length < 2) {
+                searchResults.classList.remove('show');
+                return;
+            }
+
+            // Show loading spinner
+            loadingSpinner.style.display = 'block';
+            searchResults.innerHTML = '';
+            searchResults.appendChild(loadingSpinner);
+            searchResults.classList.add('show');
+
+            // Debounce: wait 300ms after user stops typing
+            searchTimeout = setTimeout(() => {
+                fetchSearchResults(query);
+            }, 300);
+        });
+
+        // Fetch search results from API
+        function fetchSearchResults(query) {
+            fetch(`/api/search?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    displaySearchResults(data);
+                })
+                .catch(error => {
+                    console.error('Search error:', error);
+                    searchResults.innerHTML = '<div class="no-results">Error loading results</div>';
+                });
+        }
+
+        // Display search results
+        function displaySearchResults(results) {
+            loadingSpinner.style.display = 'none';
+            searchResults.innerHTML = '';
+
+            if (results.length === 0) {
+                searchResults.innerHTML = '<div class="no-results">No movies found</div>';
+                return;
+            }
+
+            results.forEach(movie => {
+                const item = document.createElement('div');
+                item.className = 'search-result-item';
+                item.innerHTML = `
+                    <div class="search-result-title">${movie.title}</div>
+                    <div class="search-result-genres">${movie.genres}</div>
+                `;
+
+                // Click to add rating form
+                item.addEventListener('click', () => {
+                    showRatingForm(movie);
+                });
+
+                searchResults.appendChild(item);
+            });
+        }
+
+        // Show rating form for selected movie
+        function showRatingForm(movie) {
+            searchResults.classList.remove('show');
+            searchInput.value = '';
+
+            // Create rating form modal or inline
+            const rating = prompt(`Rate "${movie.title}" (0.5 to 5.0):`);
+
+            if (rating !== null && rating >= 0.5 && rating <= 5) {
+                // Submit rating
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/add_rating';
+
+                const movieIdInput = document.createElement('input');
+                movieIdInput.type = 'hidden';
+                movieIdInput.name = 'movieId';
+                movieIdInput.value = movie.movieId;
+
+                const ratingInput = document.createElement('input');
+                ratingInput.type = 'hidden';
+                ratingInput.name = 'rating';
+                ratingInput.value = rating;
+
+                form.appendChild(movieIdInput);
+                form.appendChild(ratingInput);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        // Close search results when clicking outside
+        document.addEventListener('click', function(event) {
+            if (!searchInput.contains(event.target) && !searchResults.contains(event.target)) {
+                searchResults.classList.remove('show');
+            }
+        });
+
+        // Show results when clicking on input
+        searchInput.addEventListener('focus', function() {
+            if (this.value.length >= 2 && searchResults.children.length > 1) {
+                searchResults.classList.add('show');
+            }
+        });
+    </script>
 </body>
 </html>
