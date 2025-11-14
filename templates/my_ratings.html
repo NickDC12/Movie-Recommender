@@ -6,13 +6,25 @@
     <title>My Ratings</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        .rating-row:hover {
+            background-color: #f8f9fa;
+        }
+        .edit-rating-input {
+            width: 80px;
+            display: inline-block;
+        }
+        .action-buttons {
+            white-space: nowrap;
+        }
+    </style>
 </head>
 <body class="bg-light">
     <!-- Navigation -->
     <nav class="navbar navbar-dark bg-primary shadow-sm">
         <div class="container">
             <a class="navbar-brand" href="/">
-                <i class="bi bi-film"></i> KNN Movie Recommender
+                <i class="bi bi-film"></i> Hybrid Movie Recommender
             </a>
             <div>
                 <a href="{{ url_for('browse_movies') }}" class="btn btn-outline-light btn-sm me-2">
@@ -29,7 +41,19 @@
         <h1 class="mb-3">
             <i class="bi bi-list-stars text-warning"></i> My Rated Movies
         </h1>
-        <p class="text-muted mb-4">Here is a list of all the movies you have rated in this session.</p>
+        <p class="text-muted mb-4">Here is a list of all the movies you have rated. You can edit or delete your ratings.</p>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
 
         {% if ratings %}
             <div class="card shadow-sm">
@@ -39,16 +63,66 @@
                             <thead class="table-light">
                                 <tr>
                                     <th class="px-4 py-3">Movie Title</th>
+                                    <th class="px-4 py-3">Genres</th>
                                     <th class="px-4 py-3">Your Rating</th>
+                                    <th class="px-4 py-3 text-center">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for item in ratings %}
-                                <tr>
-                                    <td class="px-4 py-3">{{ item.title }}</td>
+                                <tr class="rating-row" id="row-{{ item.movieId }}">
                                     <td class="px-4 py-3">
-                                        <span class="badge bg-warning text-dark fs-6">
-                                            {{ item.rating }} <i class="bi bi-star-fill"></i>
+                                        <strong>{{ item.title }}</strong>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <small class="text-muted">{{ item.genres }}</small>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <!-- Display Mode -->
+                                        <span class="display-rating" id="display-{{ item.movieId }}">
+                                            <span class="badge bg-warning text-dark fs-6">
+                                                {{ item.rating }} <i class="bi bi-star-fill"></i>
+                                            </span>
+                                        </span>
+
+                                        <!-- Edit Mode (hidden by default) -->
+                                        <span class="edit-rating" id="edit-{{ item.movieId }}" style="display: none;">
+                                            <input type="number"
+                                                   class="form-control form-control-sm edit-rating-input"
+                                                   id="input-{{ item.movieId }}"
+                                                   value="{{ item.rating }}"
+                                                   min="0.5"
+                                                   max="5"
+                                                   step="0.5">
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-center action-buttons">
+                                        <!-- Display Mode Buttons -->
+                                        <span class="display-buttons" id="display-btns-{{ item.movieId }}">
+                                            <button class="btn btn-sm btn-outline-primary"
+                                                    onclick="enableEdit({{ item.movieId }})"
+                                                    title="Edit rating">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger"
+                                                    onclick="confirmDelete({{ item.movieId }}, '{{ item.title | replace("'", "\\'") }}')"
+                                                    title="Delete rating">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </span>
+
+                                        <!-- Edit Mode Buttons (hidden by default) -->
+                                        <span class="edit-buttons" id="edit-btns-{{ item.movieId }}" style="display: none;">
+                                            <button class="btn btn-sm btn-success"
+                                                    onclick="saveEdit({{ item.movieId }})"
+                                                    title="Save changes">
+                                                <i class="bi bi-check-lg"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-secondary"
+                                                    onclick="cancelEdit({{ item.movieId }}, {{ item.rating }})"
+                                                    title="Cancel">
+                                                <i class="bi bi-x-lg"></i>
+                                            </button>
                                         </span>
                                     </td>
                                 </tr>
@@ -56,6 +130,9 @@
                             </tbody>
                         </table>
                     </div>
+                </div>
+                <div class="card-footer text-muted">
+                    <small><i class="bi bi-info-circle"></i> Total: <strong>{{ ratings|length }}</strong> rated movies</small>
                 </div>
             </div>
         {% else %}
@@ -71,6 +148,122 @@
         </div>
     </div>
 
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-exclamation-triangle"></i> Confirm Delete
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete your rating for:</p>
+                    <p class="text-center"><strong id="deleteMovieTitle"></strong></p>
+                    <p class="text-muted small">This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form id="deleteForm" method="POST" style="display: inline;">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-trash"></i> Delete Rating
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        let deleteModal;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+        });
+
+        // Enable edit mode for a rating
+        function enableEdit(movieId) {
+            console.log('Enabling edit for movieId:', movieId);
+
+            // Hide display elements
+            document.getElementById('display-' + movieId).style.display = 'none';
+            document.getElementById('display-btns-' + movieId).style.display = 'none';
+
+            // Show edit elements
+            document.getElementById('edit-' + movieId).style.display = 'inline';
+            document.getElementById('edit-btns-' + movieId).style.display = 'inline';
+
+            // Focus on input
+            document.getElementById('input-' + movieId).focus();
+            document.getElementById('input-' + movieId).select();
+        }
+
+        // Cancel edit mode
+        function cancelEdit(movieId, originalRating) {
+            // Reset input value
+            document.getElementById('input-' + movieId).value = originalRating;
+
+            // Hide edit elements
+            document.getElementById('edit-' + movieId).style.display = 'none';
+            document.getElementById('edit-btns-' + movieId).style.display = 'none';
+
+            // Show display elements
+            document.getElementById('display-' + movieId).style.display = 'inline';
+            document.getElementById('display-btns-' + movieId).style.display = 'inline';
+        }
+
+        // Save edited rating
+        function saveEdit(movieId) {
+            const newRating = parseFloat(document.getElementById('input-' + movieId).value);
+
+            // Validate rating
+            if (newRating < 0.5 || newRating > 5 || newRating % 0.5 !== 0) {
+                alert('Please enter a valid rating between 0.5 and 5.0 in increments of 0.5');
+                return;
+            }
+
+            // Create and submit form
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/edit_rating';
+
+            const movieIdInput = document.createElement('input');
+            movieIdInput.type = 'hidden';
+            movieIdInput.name = 'movieId';
+            movieIdInput.value = movieId;
+
+            const ratingInput = document.createElement('input');
+            ratingInput.type = 'hidden';
+            ratingInput.name = 'rating';
+            ratingInput.value = newRating;
+
+            form.appendChild(movieIdInput);
+            form.appendChild(ratingInput);
+            document.body.appendChild(form);
+            form.submit();
+        }
+
+        // Show delete confirmation modal
+        function confirmDelete(movieId, movieTitle) {
+            document.getElementById('deleteMovieTitle').textContent = movieTitle;
+            document.getElementById('deleteForm').action = '/delete_rating/' + movieId;
+            deleteModal.show();
+        }
+
+        // Handle Enter key in edit input
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && event.target.classList.contains('edit-rating-input')) {
+                const movieId = event.target.id.replace('input-', '');
+                saveEdit(parseInt(movieId));
+            } else if (event.key === 'Escape' && event.target.classList.contains('edit-rating-input')) {
+                const movieId = event.target.id.replace('input-', '');
+                const originalRating = parseFloat(event.target.defaultValue);
+                cancelEdit(parseInt(movieId), originalRating);
+            }
+        });
+    </script>
 </body>
 </html>

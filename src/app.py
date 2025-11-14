@@ -17,7 +17,7 @@ print("Hybrid recommender initialized successfully.")
 
 @app.route('/', methods=['GET', 'POST'])
 def home():
-    """Handles the home page and user 'login' by ID."""
+    # Handles the home page and user 'login' by ID.
     if request.method == 'POST':
         try:
             user_id = int(request.form.get('user_id'))
@@ -40,7 +40,7 @@ def home():
 
 @app.route('/movies')
 def browse_movies():
-    """Displays movies and assigns a new userId if one doesn't exist."""
+    # Displays movies and assigns a new userId if one doesn't exist.
     if 'userId' not in session:
         conn = get_db_connection()
         max_user_id = conn.execute('SELECT MAX(userId) FROM ratings').fetchone()[0]
@@ -57,7 +57,7 @@ def browse_movies():
 
 @app.route('/add_rating', methods=['POST'])
 def add_rating():
-    """Saves a user's movie rating to the database."""
+    # Saves a user's movie rating to the database.
     if 'userId' not in session:
         return redirect(url_for('browse_movies'))
     try:
@@ -80,9 +80,85 @@ def add_rating():
     return redirect(url_for('browse_movies'))
 
 
+@app.route('/edit_rating', methods=['POST'])
+def edit_rating():
+    # Updates an existing rating.
+    if 'userId' not in session:
+        flash("Please log in first!", "error")
+        return redirect(url_for('home'))
+
+    try:
+        user_id = session['userId']
+        movie_id = int(request.form['movieId'])
+        new_rating = float(request.form['rating'])
+        timestamp = int(time.time())
+
+        # Validate rating
+        if new_rating < 0.5 or new_rating > 5.0:
+            flash("Rating must be between 0.5 and 5.0.", "error")
+            return redirect(url_for('my_ratings'))
+
+        # Update the rating in the database
+        conn = get_db_connection()
+        cursor = conn.execute(
+            'UPDATE ratings SET rating = ?, timestamp = ? WHERE userId = ? AND movieId = ?',
+            (new_rating, timestamp, user_id, movie_id)
+        )
+
+        if cursor.rowcount == 0:
+            flash("Rating not found.", "error")
+        else:
+            # Get movie title for the flash message
+            movie = conn.execute('SELECT title FROM movies WHERE movieId = ?', (movie_id,)).fetchone()
+            movie_title = movie['title'] if movie else f"Movie #{movie_id}"
+            flash(f"Updated rating for '{movie_title}' to {new_rating} ⭐", "success")
+
+        conn.commit()
+        conn.close()
+    except (ValueError, KeyError) as e:
+        flash("Invalid rating update.", "error")
+
+    return redirect(url_for('my_ratings'))
+
+
+@app.route('/delete_rating/<int:movie_id>', methods=['POST'])
+def delete_rating(movie_id):
+    # Deletes a user's rating for a movie.
+    if 'userId' not in session:
+        flash("Please log in first!", "error")
+        return redirect(url_for('home'))
+
+    try:
+        user_id = session['userId']
+
+        conn = get_db_connection()
+
+        # Get movie title before deleting
+        movie = conn.execute('SELECT title FROM movies WHERE movieId = ?', (movie_id,)).fetchone()
+        movie_title = movie['title'] if movie else f"Movie #{movie_id}"
+
+        # Delete the rating
+        cursor = conn.execute(
+            'DELETE FROM ratings WHERE userId = ? AND movieId = ?',
+            (user_id, movie_id)
+        )
+
+        if cursor.rowcount == 0:
+            flash("Rating not found.", "error")
+        else:
+            flash(f"Deleted rating for '{movie_title}'.", "success")
+
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        flash("Error deleting rating.", "error")
+
+    return redirect(url_for('my_ratings'))
+
+
 @app.route('/api/search')
 def search_movies():
-    """API endpoint for movie search autocomplete."""
+    # API endpoint for movie search autocomplete.
     query = request.args.get('q', '').strip()
 
     if not query or len(query) < 2:
@@ -103,7 +179,7 @@ def search_movies():
 
 @app.route('/recommend')
 def recommend():
-    """Generates hybrid recommendations based on the user's saved ratings."""
+    # Generates hybrid recommendations based on the user's saved ratings.
     if 'userId' not in session:
         flash("Please rate some movies first!", "error")
         return redirect(url_for('browse_movies'))
@@ -159,7 +235,7 @@ def recommend():
 
 @app.route('/similar/<int:movie_id>')
 def similar_movies(movie_id):
-    """Finds movies similar to the given movie based on content features."""
+    # Finds movies similar to the given movie based on content features.
     similar = recommender.get_similar_movies(movie_id, n=10)
 
     if not similar:
@@ -205,7 +281,7 @@ def similar_movies(movie_id):
 
 @app.route('/explain/<int:movie_id>')
 def explain_recommendation(movie_id):
-    """Provides an explanation for why a movie was recommended."""
+    # Provides an explanation for why a movie was recommended.
     if 'userId' not in session:
         flash("Please log in first!", "error")
         return redirect(url_for('home'))
@@ -218,7 +294,7 @@ def explain_recommendation(movie_id):
 
 @app.route('/my-ratings')
 def my_ratings():
-    """Displays a list of all movies rated by the current user."""
+    # Displays a list of all movies rated by the current user.
     if 'userId' not in session:
         flash("You haven't rated any movies yet.", "error")
         return redirect(url_for('browse_movies'))
@@ -226,7 +302,7 @@ def my_ratings():
     user_id = session['userId']
     conn = get_db_connection()
     query = """
-        SELECT m.title, m.genres, r.rating
+        SELECT m.movieId, m.title, m.genres, r.rating
         FROM ratings r JOIN movies m ON r.movieId = m.movieId
         WHERE r.userId = ? ORDER BY r.timestamp DESC
     """
