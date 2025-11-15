@@ -186,6 +186,8 @@
 
         // Enable edit mode for a rating
         function enableEdit(movieId) {
+            console.log('Enabling edit for movieId:', movieId);
+
             // Hide display elements
             document.getElementById('display-' + movieId).style.display = 'none';
             document.getElementById('display-btns-' + movieId).style.display = 'none';

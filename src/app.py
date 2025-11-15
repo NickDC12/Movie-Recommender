@@ -7,7 +7,7 @@ import time
 
 # Create the Flask application
 app = Flask(__name__, template_folder='../templates', static_folder='../static')
-app.secret_key = 'secret-key'
+app.secret_key = 'a-super-secret-key-that-you-should-change'
 
 # Initialize the hybrid recommender once when the app starts
 print("Initializing hybrid recommender... this may take a moment.")
@@ -66,11 +66,6 @@ def add_rating():
         rating = float(request.form['rating'])
         timestamp = int(time.time())
 
-        # Validate rating
-        if rating < 0.5 or rating > 5.0:
-            flash("Rating must be between 0.5 and 5.0.", "error")
-            return redirect(url_for('browse_movies'))
-
         # Insert or update the rating in the database
         conn = get_db_connection()
         conn.execute(
@@ -128,7 +123,7 @@ def edit_rating():
 
 @app.route('/delete_rating/<int:movie_id>', methods=['POST'])
 def delete_rating(movie_id):
-    # Delete a user's rating for a movie.
+    # Deletes a user's rating for a movie.
     if 'userId' not in session:
         flash("Please log in first!", "error")
         return redirect(url_for('home'))
@@ -170,7 +165,7 @@ def search_movies():
         return jsonify([])
 
     conn = get_db_connection()
-    search_query = """
+    search_query = f"""
            SELECT movieId, title, genres 
            FROM movies 
            WHERE title LIKE ? 
@@ -192,9 +187,8 @@ def recommend():
     user_id = session['userId']
     conn = get_db_connection()
     user_ratings_df = pd.read_sql_query(
-        "SELECT userId, movieId, rating FROM ratings WHERE userId = ?",
-        conn,
-        params=(user_id,)
+        f"SELECT userId, movieId, rating FROM ratings WHERE userId = {user_id}",
+        conn
     )
 
     if len(user_ratings_df) < 3:
@@ -216,13 +210,11 @@ def recommend():
 
         # Handle single movie ID case
         if len(movie_ids) == 1:
-            query = "SELECT movieId, title, genres FROM movies WHERE movieId = ?"
-            movies_df = pd.read_sql_query(query, conn, params=(movie_ids[0],))
+            query = f"SELECT movieId, title, genres FROM movies WHERE movieId = {movie_ids[0]}"
         else:
-            placeholders = ','.join('?' * len(movie_ids))
-            query = f"SELECT movieId, title, genres FROM movies WHERE movieId IN ({placeholders})"
-            movies_df = pd.read_sql_query(query, conn, params=movie_ids)
+            query = f"SELECT movieId, title, genres FROM movies WHERE movieId IN {tuple(movie_ids)}"
 
+        movies_df = pd.read_sql_query(query, conn)
         conn.close()
         movie_info = movies_df.set_index('movieId').to_dict('index')
 
@@ -243,7 +235,7 @@ def recommend():
 
 @app.route('/similar/<int:movie_id>')
 def similar_movies(movie_id):
-    # Finds movies similar based on content features.
+    # Finds movies similar to the given movie based on content features.
     similar = recommender.get_similar_movies(movie_id, n=10)
 
     if not similar:
@@ -256,20 +248,17 @@ def similar_movies(movie_id):
 
     # Get the original movie info
     original_movie = pd.read_sql_query(
-        "SELECT title, genres FROM movies WHERE movieId = ?",
-        conn,
-        params=(movie_id,)
+        f"SELECT title, genres FROM movies WHERE movieId = {movie_id}",
+        conn
     ).iloc[0]
 
     # Get similar movies info
     if len(movie_ids) == 1:
-        query = "SELECT movieId, title, genres FROM movies WHERE movieId = ?"
-        movies_df = pd.read_sql_query(query, conn, params=(movie_ids[0],))
+        query = f"SELECT movieId, title, genres FROM movies WHERE movieId = {movie_ids[0]}"
     else:
-        placeholders = ','.join('?' * len(movie_ids))
-        query = f"SELECT movieId, title, genres FROM movies WHERE movieId IN ({placeholders})"
-        movies_df = pd.read_sql_query(query, conn, params=movie_ids)
+        query = f"SELECT movieId, title, genres FROM movies WHERE movieId IN {tuple(movie_ids)}"
 
+    movies_df = pd.read_sql_query(query, conn)
     conn.close()
 
     movie_info = movies_df.set_index('movieId').to_dict('index')
@@ -292,7 +281,7 @@ def similar_movies(movie_id):
 
 @app.route('/explain/<int:movie_id>')
 def explain_recommendation(movie_id):
-    # Provide an explanation for why a movie was recommended.
+    # Provides an explanation for why a movie was recommended.
     if 'userId' not in session:
         flash("Please log in first!", "error")
         return redirect(url_for('home'))
