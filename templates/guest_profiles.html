@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Choose Your Experience - HybridReel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #ffffff;
+            color: #1a1a1a;
+            font-family: 'Inter', sans-serif;
+            font-weight: 400;
+        }
+
+        h1, h2, h3 {
+            font-family: 'Playfair Display', serif;
+            font-weight: 400;
+            letter-spacing: -0.02em;
+        }
+
+        .top-bar {
+            background: #1a1a1a;
+            color: #ffffff;
+            padding: 8px 0;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 500;
+        }
+
+        .main-header {
+            border-bottom: 1px solid #e0e0e0;
+            padding: 20px 0;
+        }
+
+        .brand-name {
+            font-family: 'Playfair Display', serif;
+            font-size: 42px;
+            font-weight: 400;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #1a1a1a;
+            text-decoration: none;
+        }
+
+        .hero-section {
+            padding: 60px 0 40px;
+            text-align: center;
+        }
+
+        .hero-title {
+            font-size: 56px;
+            font-weight: 400;
+            margin-bottom: 15px;
+        }
+
+        .hero-subtitle {
+            font-size: 16px;
+            color: #666666;
+            font-weight: 300;
+            margin-bottom: 40px;
+        }
+
+        .divider {
+            width: 60px;
+            height: 1px;
+            background: #1a1a1a;
+            margin: 50px auto;
+        }
+
+        .profile-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 0;
+            margin-bottom: 50px;
+        }
+
+        .profile-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            padding: 40px 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .profile-card:hover {
+            border-color: #1a1a1a;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px);
+            z-index: 1;
+        }
+
+        .profile-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .profile-name {
+            font-family: 'Playfair Display', serif;
+            font-size: 22px;
+            margin-bottom: 12px;
+            color: #1a1a1a;
+        }
+
+        .profile-stats {
+            font-size: 13px;
+            color: #666666;
+            margin-bottom: 6px;
+            letter-spacing: 0.3px;
+        }
+
+        .profile-stats strong {
+            color: #1a1a1a;
+            font-weight: 500;
+        }
+
+        .profile-genre {
+            font-size: 11px;
+            color: #999999;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 12px;
+        }
+
+        .form-section {
+            background: #fafafa;
+            padding: 60px 0;
+        }
+
+        .section-title {
+            font-size: 42px;
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        .section-subtitle {
+            font-size: 15px;
+            color: #666666;
+            text-align: center;
+            margin-bottom: 40px;
+            font-weight: 300;
+        }
+
+        .btn-primary {
+            background: #1a1a1a;
+            border: 1px solid #1a1a1a;
+            border-radius: 0;
+            padding: 14px 40px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-weight: 500;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary:hover {
+            background: #ffffff;
+            color: #1a1a1a;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid #1a1a1a;
+            color: #1a1a1a;
+            border-radius: 0;
+            padding: 14px 40px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-weight: 500;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-outline:hover {
+            background: #1a1a1a;
+            color: #ffffff;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .loading-text {
+            font-size: 13px;
+            color: #666666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .hero-title { font-size: 38px; }
+            .brand-name { font-size: 32px; }
+            .profile-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <div class="container">
+            <div class="d-flex justify-content-between">
+                <span>Your All-Access Pass to Cinema</span>
+                <span>Intelligent Recommendations</span>
+            </div>
+        </div>
+    </div>
+
+    <header class="main-header">
+        <div class="container">
+            <a href="/" class="brand-name">HybridReel</a>
+        </div>
+    </header>
+
+    <section class="hero-section">
+        <div class="container">
+            <h1 class="hero-title">Choose Your Experience</h1>
+            <p class="hero-subtitle">
+                Browse as a curated guest profile or create your own account
+            </p>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <div class="profile-grid" id="profileGrid">
+                <!-- Profiles will be loaded here -->
+            </div>
+
+            <div class="loading" id="loading">
+                <div class="spinner-border text-dark" role="status" style="width: 2rem; height: 2rem; border-width: 2px;">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="loading-text">Loading Profiles</p>
+            </div>
+        </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <section class="form-section">
+        <div class="container text-center">
+            <h2 class="section-title">Create Your Profile</h2>
+            <p class="section-subtitle">Build your own personalized movie taste profile</p>
+            <a href="{{ url_for('signup') }}" class="btn btn-primary me-3">Create Account</a>
+            <a href="{{ url_for('login') }}" class="btn btn-outline">Sign In</a>
+        </div>
+    </section>
+
+    <script>
+        // Load guest profiles on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadGuestProfiles();
+        });
+
+        async function loadGuestProfiles() {
+            const grid = document.getElementById('profileGrid');
+            const loading = document.getElementById('loading');
+            
+            loading.style.display = 'block';
+            
+            try {
+                const response = await fetch('/api/guest-profiles');
+                const profiles = await response.json();
+                
+                loading.style.display = 'none';
+                
+                profiles.forEach(profile => {
+                    const card = createProfileCard(profile);
+                    grid.appendChild(card);
+                });
+            } catch (error) {
+                console.error('Error loading profiles:', error);
+                loading.innerHTML = '<p class="text-danger" style="font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Error loading profiles. Please refresh.</p>';
+            }
+        }
+
+        function createProfileCard(profile) {
+            const card = document.createElement('div');
+            card.className = 'profile-card';
+            card.onclick = () => selectGuestProfile(profile.userId);
+            
+            const icon = getProfileIcon(profile.username);
+            
+            card.innerHTML = `
+                <div class="profile-icon">${icon}</div>
+                <div class="profile-name">${profile.username}</div>
+                <div class="profile-stats"><strong>${profile.rating_count}</strong> ratings</div>
+                <div class="profile-stats">Average: <strong>${profile.avg_rating} ⭐</strong></div>
+                <div class="profile-genre">Favorite: ${profile.top_genre}</div>
+            `;
+            
+            return card;
+        }
+
+        function getProfileIcon(username) {
+            const iconMap = {
+                'Action Fan': '🎬',
+                'Comedy Lover': '😂',
+                'Sci-Fi Enthusiast': '🚀',
+                'Drama Buff': '🎭',
+                'Horror Fanatic': '👻',
+                'Family Movies': '👨‍👩‍👧‍👦',
+                'Classic Film Buff': '🎞️',
+                'Casual Viewer': '🍿'
+            };
+            return iconMap[username] || '🎪';
+        }
+
+        function selectGuestProfile(userId) {
+            // Submit form to select this guest profile
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/select-guest';
+            
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'guest_user_id';
+            input.value = userId;
+            
+            form.appendChild(input);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

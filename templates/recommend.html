@@ -3,26 +3,306 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your Recommendations</title>
+    <title>Your Recommendations - HybridReel</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
-        .score-breakdown {
-            font-size: 0.85rem;
-            margin-top: 10px;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        .progress {
-            height: 8px;
+
+        body {
+            background: #ffffff;
+            color: #1a1a1a;
+            font-family: 'Inter', sans-serif;
+            font-weight: 400;
         }
+
+        h1, h2, h3 {
+            font-family: 'Playfair Display', serif;
+            font-weight: 400;
+            letter-spacing: -0.02em;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            background: #1a1a1a;
+            color: #ffffff;
+            padding: 8px 0;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 500;
+        }
+
+        /* Header */
+        .main-header {
+            border-bottom: 1px solid #e0e0e0;
+            padding: 20px 0;
+            background: #ffffff;
+        }
+
+        .brand-name {
+            font-family: 'Playfair Display', serif;
+            font-size: 42px;
+            font-weight: 400;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #1a1a1a;
+            text-decoration: none;
+        }
+
+        .nav-link {
+            color: #1a1a1a;
+            text-decoration: none;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 500;
+            padding: 8px 16px;
+            border: 1px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            color: #1a1a1a;
+            border-color: #1a1a1a;
+        }
+
+        /* Page Header */
+        .page-header {
+            padding: 60px 0 40px;
+            text-align: center;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .page-title {
+            font-size: 56px;
+            margin-bottom: 15px;
+        }
+
+        .page-subtitle {
+            font-size: 15px;
+            color: #666666;
+            font-weight: 300;
+            margin-bottom: 30px;
+        }
+
+        .page-info {
+            font-size: 13px;
+            color: #999999;
+            background: #fafafa;
+            padding: 15px 25px;
+            border: 1px solid #e0e0e0;
+            display: inline-block;
+        }
+
+        /* Recommendation Cards */
+        .recommendations-section {
+            padding: 60px 0 80px;
+        }
+
+        .recommendation-card {
+            border: 1px solid #e0e0e0;
+            padding: 40px 35px;
+            margin-bottom: 25px;
+            transition: all 0.3s;
+            background: #ffffff;
+        }
+
+        .recommendation-card:hover {
+            border-color: #1a1a1a;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.06);
+        }
+
+        .rec-title {
+            font-size: 28px;
+            margin-bottom: 12px;
+            font-weight: 400;
+        }
+
+        .rec-genres {
+            font-size: 12px;
+            color: #999999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 25px;
+        }
+
+        /* Hybrid Score Badge */
         .hybrid-badge {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #1a1a1a;
+            color: #ffffff;
+            padding: 10px 20px;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            display: inline-block;
+            margin-bottom: 20px;
         }
-        .explain-section {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 15px;
+
+        /* Score Breakdown */
+        .score-breakdown {
+            margin-top: 25px;
+            padding-top: 25px;
+            border-top: 1px solid #f0f0f0;
         }
+
+        .score-item {
+            margin-bottom: 15px;
+        }
+
+        .score-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #666666;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .score-value {
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        /* Progress Bar */
+        .progress {
+            height: 4px;
+            background: #f0f0f0;
+            border-radius: 0;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            background: #1a1a1a;
+            border-radius: 0;
+        }
+
+        .progress-bar.bg-primary {
+            background: #1a1a1a;
+        }
+
+        .progress-bar.bg-success {
+            background: #666666;
+        }
+
+        /* Explain Button */
+        .btn-explain {
+            background: transparent;
+            border: 1px solid #d0d0d0;
+            color: #1a1a1a;
+            border-radius: 0;
+            padding: 10px 20px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 500;
+            width: 100%;
+            margin-top: 20px;
+            transition: all 0.2s;
+        }
+
+        .btn-explain:hover {
+            border-color: #1a1a1a;
+            background: #fafafa;
+        }
+
+        /* Main Action Button */
+        .btn-primary {
+            background: #1a1a1a;
+            border: 1px solid #1a1a1a;
+            border-radius: 0;
+            padding: 14px 40px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-weight: 500;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+            color: #ffffff;
+        }
+
+        .btn-primary:hover {
+            background: #ffffff;
+            color: #1a1a1a;
+        }
+
+        /* Alerts */
+        .alert {
+            border-radius: 0;
+            border: none;
+            border-left: 3px solid;
+            font-size: 14px;
+            font-weight: 300;
+        }
+
+        .alert-danger {
+            background: #fef2f2;
+            border-left-color: #ef4444;
+            color: #991b1b;
+        }
+
+        .alert-info {
+            background: #f0f9ff;
+            border-left-color: #3b82f6;
+            color: #1e40af;
+        }
+
+        /* Modal */
+        .modal-content {
+            border-radius: 0;
+            border: 1px solid #e0e0e0;
+        }
+
+        .modal-header {
+            background: #1a1a1a;
+            color: #ffffff;
+            border-radius: 0;
+            border-bottom: none;
+            padding: 20px 25px;
+        }
+
+        .modal-title {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 500;
+        }
+
+        .modal-body {
+            padding: 35px 30px;
+        }
+
+        .modal-footer {
+            border-top: 1px solid #e0e0e0;
+            padding: 20px 25px;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            border: 1px solid #d0d0d0;
+            color: #1a1a1a;
+            border-radius: 0;
+            padding: 10px 24px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 500;
+        }
+
+        .btn-close {
+            opacity: 1;
+            filter: brightness(0) invert(1);
+        }
+
+        /* Modal Content Styling */
         .score-circle {
             width: 80px;
             height: 80px;
@@ -34,68 +314,102 @@
             font-weight: bold;
             color: white;
             margin: 0 auto;
+            font-family: 'Playfair Display', serif;
+        }
+
+        .bg-success {
+            background: #10b981;
+        }
+
+        .bg-warning {
+            background: #f59e0b;
+        }
+
+        .bg-danger {
+            background: #ef4444;
+        }
+
+        .explain-section {
+            background: #fafafa;
+            padding: 25px;
+            margin-top: 20px;
+            border: 1px solid #e0e0e0;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .page-title {
+                font-size: 40px;
+            }
+
+            .brand-name {
+                font-size: 32px;
+            }
+
+            .rec-title {
+                font-size: 22px;
+            }
         }
     </style>
 </head>
-<body class="bg-light">
-    <!-- Navigation -->
-    <nav class="navbar navbar-dark bg-primary shadow-sm">
+<body>
+    <!-- Top Bar -->
+    <div class="top-bar">
         <div class="container">
-            <a class="navbar-brand" href="/">
-                <i class="bi bi-film"></i> Hybrid Movie Recommender
-            </a>
-            <div>
-                <a href="{{ url_for('my_ratings') }}" class="btn btn-outline-light btn-sm me-2">
-                    <i class="bi bi-list-stars"></i> My Ratings
-                </a>
-                <a href="{{ url_for('browse_movies') }}" class="btn btn-outline-light btn-sm">
-                    <i class="bi bi-collection"></i> Browse Movies
-                </a>
+            <div class="text-center">
+                <span>Your Personalized Collection</span>
             </div>
         </div>
-    </nav>
+    </div>
 
-    <div class="container py-4">
-        <div class="text-center mb-4">
-            <h1 class="display-5">
-                <i class="bi bi-stars text-warning"></i> Your Personalized Recommendations!
-            </h1>
-            <p class="lead text-muted">Based on the movies you rated, we think you'll enjoy these.</p>
-            <div class="alert alert-info">
-                <small>
-                    <strong>How it works:</strong> We combine user behavior patterns (70%) with movie content features like genres (30%) to give you the best recommendations.
-                </small>
+    <!-- Main Header -->
+    <header class="main-header">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <a href="/" class="brand-name">HybridReel</a>
+                <div class="d-flex gap-3">
+                    <a href="{{ url_for('my_ratings') }}" class="nav-link">My Ratings</a>
+                    <a href="{{ url_for('browse_movies') }}" class="nav-link">Browse Movies</a>
+                </div>
             </div>
         </div>
+    </header>
 
-        {% if recommendations %}
-            <div class="row">
-                {% for rec in recommendations %}
-                {% set collab_percent = (rec.collaborative_score / 5.0 * 100) | round(1) %}
-                {% set content_percent = (rec.content_score / 5.0 * 100) | round(1) %}
-                <div class="col-md-6 mb-3">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-body">
-                            <h5 class="card-title">{{ rec.title }}</h5>
-                            <p class="text-muted small mb-3">
-                                <i class="bi bi-tags"></i> {{ rec.genres }}
-                            </p>
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="container">
+            <h1 class="page-title">Your Recommendations</h1>
+            <p class="page-subtitle">Curated selections based on your unique taste</p>
+            <div class="page-info">
+                Collaborative Filtering (70%) × Content Analysis (30%) = Hybrid Intelligence
+            </div>
+        </div>
+    </div>
+
+    <!-- Recommendations Section -->
+    <section class="recommendations-section">
+        <div class="container">
+            {% if recommendations %}
+                <div class="row">
+                    {% for rec in recommendations %}
+                    {% set collab_percent = (rec.collaborative_score / 5.0 * 100) | round(1) %}
+                    {% set content_percent = (rec.content_score / 5.0 * 100) | round(1) %}
+                    <div class="col-md-6">
+                        <div class="recommendation-card">
+                            <h3 class="rec-title">{{ rec.title }}</h3>
+                            <p class="rec-genres">{{ rec.genres }}</p>
 
                             <!-- Hybrid Score -->
-                            <div class="mb-2">
-                                <span class="badge hybrid-badge text-white fs-6">
-                                    Hybrid Score: {{ rec.hybrid_score }} <i class="bi bi-star-fill"></i>
-                                </span>
+                            <div class="hybrid-badge">
+                                Hybrid Score: {{ rec.hybrid_score }} <i class="bi bi-star-fill"></i>
                             </div>
 
                             <!-- Score Breakdown -->
                             <div class="score-breakdown">
-                                <div class="mb-2">
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <span class="text-muted">
-                                            <i class="bi bi-people"></i> Collaborative (70%)
-                                        </span>
-                                        <span class="badge bg-primary">{{ rec.collaborative_score }}</span>
+                                <div class="score-item">
+                                    <div class="score-label">
+                                        <span><i class="bi bi-people"></i> Collaborative (70%)</span>
+                                        <span class="score-value">{{ rec.collaborative_score }}</span>
                                     </div>
                                     <div class="progress">
                                         <div class="progress-bar bg-primary" role="progressbar"
@@ -104,12 +418,10 @@
                                     </div>
                                 </div>
 
-                                <div>
-                                    <div class="d-flex justify-content-between align-items-center mb-1">
-                                        <span class="text-muted">
-                                            <i class="bi bi-bookmark"></i> Content-Based (30%)
-                                        </span>
-                                        <span class="badge bg-success">{{ rec.content_score }}</span>
+                                <div class="score-item">
+                                    <div class="score-label">
+                                        <span><i class="bi bi-bookmark"></i> Content-Based (30%)</span>
+                                        <span class="score-value">{{ rec.content_score }}</span>
                                     </div>
                                     <div class="progress">
                                         <div class="progress-bar bg-success" role="progressbar"
@@ -119,48 +431,46 @@
                                 </div>
                             </div>
 
-                            <!-- Why This Button -->
-                            <div class="mt-3">
-                                <button class="btn btn-sm btn-outline-info w-100"
-                                        onclick="explainMovie({{ rec.movieId }})">
-                                    <i class="bi bi-info-circle"></i> Why was this recommended?
-                                </button>
-                            </div>
+                            <!-- Explain Button -->
+                            <button class="btn-explain"
+                                    onclick="explainMovie({{ rec.movieId }})">
+                                <i class="bi bi-info-circle"></i> Why This Recommendation?
+                            </button>
                         </div>
                     </div>
+                    {% endfor %}
                 </div>
-                {% endfor %}
-            </div>
-        {% else %}
-            <div class="alert alert-danger text-center">
-                <i class="bi bi-exclamation-triangle"></i>
-                Sorry, we couldn't generate recommendations based on your ratings. Try rating a few more movies.
-            </div>
-        {% endif %}
+            {% else %}
+                <div class="alert alert-danger text-center">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Unable to generate recommendations. Please rate more movies to improve results.
+                </div>
+            {% endif %}
 
-        <div class="text-center mt-4">
-            <a href="{{ url_for('browse_movies') }}" class="btn btn-primary btn-lg">
-                <i class="bi bi-plus-circle"></i> Rate More Movies
-            </a>
+            <div class="text-center mt-5">
+                <a href="{{ url_for('browse_movies') }}" class="btn-primary">
+                    Rate More Movies
+                </a>
+            </div>
         </div>
-    </div>
+    </section>
 
     <!-- Explanation Modal -->
     <div class="modal fade" id="explainModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
+                <div class="modal-header">
                     <h5 class="modal-title">
-                        <i class="bi bi-lightbulb"></i> Why This Recommendation?
+                        <i class="bi bi-lightbulb"></i> Recommendation Analysis
                     </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body" id="modalContent">
                     <div class="text-center py-4">
-                        <div class="spinner-border text-primary" role="status">
+                        <div class="spinner-border text-dark" role="status">
                             <span class="visually-hidden">Loading...</span>
                         </div>
-                        <p class="mt-3 text-muted">Loading explanation...</p>
+                        <p class="mt-3" style="color: #999999;">Loading explanation...</p>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -172,6 +482,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
+    <!-- PRESERVED ORIGINAL JAVASCRIPT - DO NOT MODIFY -->
     <script>
         let explainModal;
 
@@ -182,10 +493,10 @@
         function explainMovie(movieId) {
             document.getElementById('modalContent').innerHTML = `
                 <div class="text-center py-4">
-                    <div class="spinner-border text-primary" role="status">
+                    <div class="spinner-border text-dark" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
-                    <p class="mt-3 text-muted">Analyzing recommendation...</p>
+                    <p class="mt-3" style="color: #999999;">Analyzing recommendation...</p>
                 </div>
             `;
             explainModal.show();
@@ -216,42 +527,41 @@
 
             const content = `
                 <div class="text-center mb-4">
-                    <h4 class="mb-3">${data.title}</h4>
-                    <p class="text-muted">
-                        <i class="bi bi-tags"></i> ${data.genres}
+                    <h4 class="mb-3" style="font-family: 'Playfair Display', serif;">${data.title}</h4>
+                    <p style="color: #999999; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
+                        ${data.genres}
                     </p>
 
                     <div class="score-circle ${scoreColor} my-3">
                         ${data.hybrid_score}
                     </div>
-                    <p class="text-muted">Overall Recommendation Score</p>
+                    <p style="color: #999999; font-size: 13px;">Overall Recommendation Score</p>
                 </div>
 
                 <div class="explain-section">
-                    <h6 class="mb-3">
-                        <i class="bi bi-bar-chart"></i> Score Breakdown
+                    <h6 class="mb-3" style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">
+                        Score Breakdown
                     </h6>
 
                     <div class="mb-4">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <div>
-                                <strong><i class="bi bi-people-fill text-primary"></i> Collaborative Filtering</strong>
+                                <strong>Collaborative Filtering</strong>
                                 <br>
-                                <small class="text-muted">Based on users with similar taste</small>
+                                <small style="color: #999999; font-size: 12px;">Based on users with similar taste</small>
                             </div>
-                            <span class="badge bg-primary fs-6">${data.collaborative_score} / 5.0</span>
+                            <span style="font-weight: 600;">${data.collaborative_score} / 5.0</span>
                         </div>
-                        <div class="progress" style="height: 20px;">
+                        <div class="progress" style="height: 8px;">
                             <div class="progress-bar bg-primary"
                                  role="progressbar"
                                  style="width: ${collabPercent}%"
                                  aria-valuenow="${collabPercent}"
                                  aria-valuemin="0"
                                  aria-valuemax="100">
-                                ${data.collaborative_weight * 100}% weight
                             </div>
                         </div>
-                        <small class="text-muted">
+                        <small style="color: #999999; font-size: 12px;">
                             Users who rated movies similarly to you gave this movie an average rating of ${data.collaborative_score}.
                         </small>
                     </div>
@@ -259,30 +569,29 @@
                     <div class="mb-4">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <div>
-                                <strong><i class="bi bi-bookmark-fill text-success"></i> Content-Based Filtering</strong>
+                                <strong>Content-Based Filtering</strong>
                                 <br>
-                                <small class="text-muted">Based on movie features (genres)</small>
+                                <small style="color: #999999; font-size: 12px;">Based on movie features (genres)</small>
                             </div>
-                            <span class="badge bg-success fs-6">${data.content_score} / 5.0</span>
+                            <span style="font-weight: 600;">${data.content_score} / 5.0</span>
                         </div>
-                        <div class="progress" style="height: 20px;">
+                        <div class="progress" style="height: 8px;">
                             <div class="progress-bar bg-success"
                                  role="progressbar"
                                  style="width: ${contentPercent}%"
                                  aria-valuenow="${contentPercent}"
                                  aria-valuemin="0"
                                  aria-valuemax="100">
-                                ${data.content_weight * 100}% weight
                             </div>
                         </div>
-                        <small class="text-muted">
+                        <small style="color: #999999; font-size: 12px;">
                             This movie's genres match your preferences with a score of ${data.content_score}.
                         </small>
                     </div>
 
-                    <div class="alert alert-light border">
-                        <strong><i class="bi bi-calculator"></i> Calculation:</strong><br>
-                        <code>
+                    <div style="background: #ffffff; padding: 20px; border: 1px solid #e0e0e0;">
+                        <strong style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Calculation</strong><br>
+                        <code style="color: #1a1a1a; font-size: 13px;">
                             Hybrid Score = (${data.collaborative_weight} × ${data.collaborative_score}) + (${data.content_weight} × ${data.content_score})
                             <br>
                             = ${(data.collaborative_weight * data.collaborative_score).toFixed(2)} + ${(data.content_weight * data.content_score).toFixed(2)}
@@ -292,9 +601,9 @@
                     </div>
                 </div>
 
-                <div class="mt-3 p-3 bg-light border-start border-5 border-info">
-                    <strong><i class="bi bi-chat-left-quote text-info"></i> In Simple Terms:</strong>
-                    <p class="mb-0 mt-2">
+                <div class="mt-3 p-3" style="background: #fafafa; border-left: 3px solid #1a1a1a;">
+                    <strong style="font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Analysis</strong>
+                    <p class="mb-0 mt-2" style="font-size: 14px; line-height: 1.7;">
                         ${getInterpretation(data)}
                     </p>
                 </div>
@@ -313,9 +622,9 @@
             }
 
             if (data.hybrid_score >= 4.5) {
-                text += 'This is a <strong class="text-success">highly confident</strong> recommendation!';
+                text += 'This is a <strong>highly confident</strong> recommendation.';
             } else if (data.hybrid_score >= 4.0) {
-                text += 'We\'re <strong class="text-primary">quite confident</strong> you\'ll enjoy this.';
+                text += 'We\'re <strong>quite confident</strong> you\'ll enjoy this.';
             } else if (data.hybrid_score >= 3.5) {
                 text += 'We think you\'ll <strong>probably like</strong> this movie.';
             } else {

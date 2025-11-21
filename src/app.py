@@ -1,52 +1,286 @@
 from flask import Flask, render_template, request, session, redirect, url_for, flash, jsonify
+from werkzeug.security import generate_password_hash, check_password_hash
+from sqlite3 import IntegrityError
+from functools import wraps
 from surprise import Reader, Dataset, KNNWithMeans
 from src.hybrid_recommender import HybridRecommender
 from src.database import get_db_connection
 import pandas as pd
 import time
 
-# Create the Flask application
 app = Flask(__name__, template_folder='../templates', static_folder='../static')
 app.secret_key = 'a-super-secret-key-that-you-should-change'
 
-# Initialize the hybrid recommender once when the app starts
 print("Initializing hybrid recommender... this may take a moment.")
 recommender = HybridRecommender(k=30, collaborative_weight=0.7, content_weight=0.3)
 print("Hybrid recommender initialized successfully.")
 
 
-@app.route('/', methods=['GET', 'POST'])
-def home():
-    # Handles the home page and user 'login' by ID.
-    if request.method == 'POST':
-        try:
-            user_id = int(request.form.get('user_id'))
-            conn = get_db_connection()
-            user_exists = conn.execute('SELECT 1 FROM ratings WHERE userId = ? LIMIT 1', (user_id,)).fetchone()
-            conn.close()
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'userId' not in session:
+            flash('Please log in to access this page.', 'error')
+            return redirect(url_for('home'))
+        return f(*args, **kwargs)
 
-            if user_exists:
-                session['userId'] = user_id
-                flash(f"Welcome back, User {user_id}! Your rating history has been loaded.", "success")
-                return redirect(url_for('browse_movies'))
-            else:
-                flash(f"User ID {user_id} not found. Please try again or start as a new user.", "error")
-        except (ValueError, TypeError):
-            flash("Please enter a valid number for the User ID.", "error")
-        return redirect(url_for('home'))
+    return decorated_function
+
+
+def validate_username(username):
+    if not username or len(username) < 3:
+        return False, "Username must be at least 3 characters"
+    if len(username) > 20:
+        return False, "Username must be less than 20 characters"
+    if not username.replace('_', '').replace('-', '').isalnum():
+        return False, "Username can only contain letters, numbers, underscores, and hyphens"
+    return True, None
+
+
+def validate_password(password):
+    if not password or len(password) < 6:
+        return False, "Password must be at least 6 characters"
+    return True, None
+
+
+@app.route('/')
+def home():
+    # Landing page - redirects to guest profile selector
+    return redirect(url_for('guest_profiles'))
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    # Login page for registered users"""
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+
+        conn = get_db_connection()
+        user = conn.execute(
+            'SELECT * FROM users WHERE username = ? AND is_anonymous = 0',
+            (username,)
+        ).fetchone()
+        conn.close()
+
+        if user and check_password_hash(user['password'], password):
+            session['userId'] = user['userId']
+            session['username'] = user['username']
+            session['is_anonymous'] = False
+            session['is_guest'] = False
+            flash(f"Welcome back, {username}!", "success")
+            return redirect(url_for('browse_movies'))
+        else:
+            flash("Invalid username or password.", "error")
+            return redirect(url_for('login'))
 
     return render_template('index.html')
 
 
+@app.route('/guest-profiles')
+def guest_profiles():
+    # Show page to select a guest profile
+    return render_template('guest_profiles.html')
+
+
+@app.route('/api/guest-profiles')
+def api_guest_profiles():
+    #API endpoint to get demo profiles (optimized users with 10-15 ratings)
+    conn = get_db_connection()
+
+    profiles = conn.execute('''
+        SELECT 
+            u.userId,
+            u.username,
+            COUNT(r.rating) as rating_count,
+            ROUND(AVG(r.rating), 1) as avg_rating,
+            (
+                SELECT m.genres 
+                FROM ratings r2 
+                JOIN movies m ON r2.movieId = m.movieId 
+                WHERE r2.userId = u.userId 
+                GROUP BY m.genres 
+                ORDER BY COUNT(*) DESC 
+                LIMIT 1
+            ) as top_genre
+        FROM users u
+        JOIN ratings r ON u.userId = r.userId
+        WHERE u.is_anonymous = 1
+        GROUP BY u.userId
+        ORDER BY u.userId DESC
+    ''').fetchall()
+
+    conn.close()
+
+    profile_list = []
+    for p in profiles:
+        profile_list.append({
+            'userId': p['userId'],
+            'username': p['username'],
+            'rating_count': p['rating_count'],
+            'avg_rating': p['avg_rating'],
+            'top_genre': p['top_genre'].split('|')[0] if p['top_genre'] else 'Various'
+        })
+
+    return jsonify(profile_list)
+
+
+@app.route('/select-guest', methods=['POST'])
+def select_guest():
+    """Set session to browse as a guest user"""
+    guest_user_id = request.form.get('guest_user_id')
+
+    if not guest_user_id:
+        flash("Invalid guest profile selection.", "error")
+        return redirect(url_for('guest_profiles'))
+
+    conn = get_db_connection()
+
+    user = conn.execute(
+        'SELECT * FROM users WHERE userId = ? AND is_anonymous = 1',
+        (guest_user_id,)
+    ).fetchone()
+
+    conn.close()
+
+    if user:
+        session['userId'] = int(guest_user_id)
+        session['username'] = user['username']
+        session['is_guest'] = True
+        session['is_anonymous'] = True
+        flash(f"Browsing as {user['username']}!", "success")
+        return redirect(url_for('browse_movies'))
+    else:
+        flash("Invalid guest profile.", "error")
+        return redirect(url_for('guest_profiles'))
+
+
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        password_confirm = request.form.get('password_confirm', '')
+
+        valid_user, user_error = validate_username(username)
+        if not valid_user:
+            flash(user_error, "error")
+            return redirect(url_for('signup'))
+
+        valid_pass, pass_error = validate_password(password)
+        if not valid_pass:
+            flash(pass_error, "error")
+            return redirect(url_for('signup'))
+
+        if password != password_confirm:
+            flash("Passwords do not match.", "error")
+            return redirect(url_for('signup'))
+
+        conn = get_db_connection()
+        max_rating_id = conn.execute('SELECT MAX(userId) FROM ratings').fetchone()[0] or 610
+        max_user_id = conn.execute('SELECT MAX(userId) FROM users').fetchone()[0] or 610
+        new_user_id = max(max_rating_id, max_user_id) + 1
+
+        hashed_password = generate_password_hash(password)
+        timestamp = int(time.time())
+
+        try:
+            conn.execute(
+                'INSERT INTO users (userId, username, password, created_at, is_anonymous) VALUES (?, ?, ?, ?, ?)',
+                (new_user_id, username, hashed_password, timestamp, 0)
+            )
+            conn.commit()
+
+            session['userId'] = new_user_id
+            session['username'] = username
+            session['is_anonymous'] = False
+
+            flash(f"Account created! Welcome, {username}.", "success")
+            conn.close()
+            return redirect(url_for('browse_movies'))
+
+        except IntegrityError:
+            conn.close()
+            flash("Username already exists. Please choose another.", "error")
+            return redirect(url_for('signup'))
+
+    return render_template('signup.html')
+
+
+@app.route('/logout')
+def logout():
+    username = session.get('username', 'Guest')
+    session.clear()
+    flash(f"Goodbye, {username}!", "success")
+    return redirect(url_for('home'))
+
+
+@app.route('/profile')
+@login_required
+def profile():
+    if session.get('is_anonymous'):
+        flash("Create an account to access your profile!", "error")
+        return redirect(url_for('signup'))
+
+    conn = get_db_connection()
+    user = conn.execute('SELECT * FROM users WHERE userId = ?', (session['userId'],)).fetchone()
+
+    rating_count = conn.execute('SELECT COUNT(*) FROM ratings WHERE userId = ?', (session['userId'],)).fetchone()[0]
+
+    avg_rating = conn.execute('SELECT AVG(rating) FROM ratings WHERE userId = ?', (session['userId'],)).fetchone()[0]
+
+    genre_query = """
+        SELECT m.genres, AVG(r.rating) as avg_rating, COUNT(*) as count
+        FROM ratings r
+        JOIN movies m ON r.movieId = m.movieId
+        WHERE r.userId = ?
+        GROUP BY m.genres
+        ORDER BY avg_rating DESC
+        LIMIT 5
+    """
+    top_genres = conn.execute(genre_query, (session['userId'],)).fetchall()
+
+    recent_ratings = conn.execute("""
+        SELECT m.title, m.genres, r.rating, r.timestamp
+        FROM ratings r
+        JOIN movies m ON r.movieId = m.movieId
+        WHERE r.userId = ?
+        ORDER BY r.timestamp DESC
+        LIMIT 10
+    """, (session['userId'],)).fetchall()
+
+    conn.close()
+
+    return render_template('profile.html',
+                           user=user,
+                           rating_count=rating_count,
+                           avg_rating=avg_rating,
+                           top_genres=top_genres,
+                           recent_ratings=recent_ratings)
+
+
 @app.route('/movies')
 def browse_movies():
-    # Displays movies and assigns a new userId if one doesn't exist.
     if 'userId' not in session:
         conn = get_db_connection()
-        max_user_id = conn.execute('SELECT MAX(userId) FROM ratings').fetchone()[0]
-        session['userId'] = (max_user_id or 0) + 1
+        max_rating_id = conn.execute('SELECT MAX(userId) FROM ratings').fetchone()[0] or 610
+        max_user_id = conn.execute('SELECT MAX(userId) FROM users').fetchone()[0] or 610
+        new_user_id = max(max_rating_id, max_user_id) + 1
+
+        timestamp = int(time.time())
+        try:
+            conn.execute(
+                'INSERT INTO users (userId, username, password, created_at, is_anonymous) VALUES (?, ?, ?, ?, ?)',
+                (new_user_id, f'guest_{new_user_id}', '', timestamp, 1)
+            )
+            conn.commit()
+        except:
+            pass
+
         conn.close()
-        flash(f"Welcome! You have been assigned temporary User ID: {session['userId']}", "success")
+        session['userId'] = new_user_id
+        session['is_anonymous'] = True
+        flash(f"Welcome! You've been assigned temporary ID: {new_user_id}", "success")
 
     conn = get_db_connection()
     movies_df = pd.read_sql_query("SELECT movieId, title, genres FROM movies LIMIT 100", conn)
@@ -57,7 +291,6 @@ def browse_movies():
 
 @app.route('/add_rating', methods=['POST'])
 def add_rating():
-    # Saves a user's movie rating to the database.
     if 'userId' not in session:
         return redirect(url_for('browse_movies'))
     try:
@@ -66,7 +299,6 @@ def add_rating():
         rating = float(request.form['rating'])
         timestamp = int(time.time())
 
-        # Insert or update the rating in the database
         conn = get_db_connection()
         conn.execute(
             'INSERT OR REPLACE INTO ratings (userId, movieId, rating, timestamp) VALUES (?, ?, ?, ?)',
@@ -74,7 +306,7 @@ def add_rating():
         )
         conn.commit()
         conn.close()
-        flash(f"Your rating of {rating} ⭐ has been saved to the database!", "success")
+        flash(f"Your rating of {rating} ⭐ has been saved!", "success")
     except (ValueError, KeyError):
         flash("Invalid rating submission.", "error")
     return redirect(url_for('browse_movies'))
@@ -82,7 +314,6 @@ def add_rating():
 
 @app.route('/edit_rating', methods=['POST'])
 def edit_rating():
-    # Updates an existing rating.
     if 'userId' not in session:
         flash("Please log in first!", "error")
         return redirect(url_for('home'))
@@ -93,12 +324,10 @@ def edit_rating():
         new_rating = float(request.form['rating'])
         timestamp = int(time.time())
 
-        # Validate rating
         if new_rating < 0.5 or new_rating > 5.0:
             flash("Rating must be between 0.5 and 5.0.", "error")
             return redirect(url_for('my_ratings'))
 
-        # Update the rating in the database
         conn = get_db_connection()
         cursor = conn.execute(
             'UPDATE ratings SET rating = ?, timestamp = ? WHERE userId = ? AND movieId = ?',
@@ -108,7 +337,6 @@ def edit_rating():
         if cursor.rowcount == 0:
             flash("Rating not found.", "error")
         else:
-            # Get movie title for the flash message
             movie = conn.execute('SELECT title FROM movies WHERE movieId = ?', (movie_id,)).fetchone()
             movie_title = movie['title'] if movie else f"Movie #{movie_id}"
             flash(f"Updated rating for '{movie_title}' to {new_rating} ⭐", "success")
@@ -123,21 +351,16 @@ def edit_rating():
 
 @app.route('/delete_rating/<int:movie_id>', methods=['POST'])
 def delete_rating(movie_id):
-    # Deletes a user's rating for a movie.
     if 'userId' not in session:
         flash("Please log in first!", "error")
         return redirect(url_for('home'))
 
     try:
         user_id = session['userId']
-
         conn = get_db_connection()
-
-        # Get movie title before deleting
         movie = conn.execute('SELECT title FROM movies WHERE movieId = ?', (movie_id,)).fetchone()
         movie_title = movie['title'] if movie else f"Movie #{movie_id}"
 
-        # Delete the rating
         cursor = conn.execute(
             'DELETE FROM ratings WHERE userId = ? AND movieId = ?',
             (user_id, movie_id)
@@ -158,7 +381,6 @@ def delete_rating(movie_id):
 
 @app.route('/api/search')
 def search_movies():
-    # API endpoint for movie search autocomplete.
     query = request.args.get('q', '').strip()
 
     if not query or len(query) < 2:
@@ -166,20 +388,20 @@ def search_movies():
 
     conn = get_db_connection()
     search_query = f"""
-           SELECT movieId, title, genres 
-           FROM movies 
-           WHERE title LIKE ? 
-           LIMIT 10
-       """
+        SELECT movieId, title, genres 
+        FROM movies 
+        WHERE title LIKE ? 
+        LIMIT 10
+    """
     movies_df = pd.read_sql_query(search_query, conn, params=(f'%{query}%',))
     conn.close()
 
     results = movies_df.to_dict('records')
     return jsonify(results)
 
+
 @app.route('/recommend')
 def recommend():
-    # Generates hybrid recommendations based on the user's saved ratings.
     if 'userId' not in session:
         flash("Please rate some movies first!", "error")
         return redirect(url_for('browse_movies'))
@@ -198,17 +420,14 @@ def recommend():
 
     conn.close()
 
-    # Use the hybrid recommender
     print(f"Generating hybrid recommendations for user {user_id}...")
     predictions = recommender.get_recommendations(user_id, n=10)
 
-    # Fetch movie details
     recommendations = []
     if predictions:
         movie_ids = [pred[0] for pred in predictions]
         conn = get_db_connection()
 
-        # Handle single movie ID case
         if len(movie_ids) == 1:
             query = f"SELECT movieId, title, genres FROM movies WHERE movieId = {movie_ids[0]}"
         else:
@@ -235,24 +454,20 @@ def recommend():
 
 @app.route('/similar/<int:movie_id>')
 def similar_movies(movie_id):
-    # Finds movies similar to the given movie based on content features.
     similar = recommender.get_similar_movies(movie_id, n=10)
 
     if not similar:
         flash(f"Movie ID {movie_id} not found.", "error")
         return redirect(url_for('browse_movies'))
 
-    # Fetch movie details
     movie_ids = [sim[0] for sim in similar]
     conn = get_db_connection()
 
-    # Get the original movie info
     original_movie = pd.read_sql_query(
         f"SELECT title, genres FROM movies WHERE movieId = {movie_id}",
         conn
     ).iloc[0]
 
-    # Get similar movies info
     if len(movie_ids) == 1:
         query = f"SELECT movieId, title, genres FROM movies WHERE movieId = {movie_ids[0]}"
     else:
@@ -270,7 +485,7 @@ def similar_movies(movie_id):
             similar_list.append({
                 'title': movie_info[mid]['title'],
                 'genres': movie_info[mid]['genres'],
-                'similarity': round(similarity * 100, 1)  # Convert to percentage
+                'similarity': round(similarity * 100, 1)
             })
 
     return render_template('similar.html',
@@ -281,7 +496,6 @@ def similar_movies(movie_id):
 
 @app.route('/explain/<int:movie_id>')
 def explain_recommendation(movie_id):
-    # Provides an explanation for why a movie was recommended.
     if 'userId' not in session:
         flash("Please log in first!", "error")
         return redirect(url_for('home'))
@@ -294,7 +508,6 @@ def explain_recommendation(movie_id):
 
 @app.route('/my-ratings')
 def my_ratings():
-    # Displays a list of all movies rated by the current user.
     if 'userId' not in session:
         flash("You haven't rated any movies yet.", "error")
         return redirect(url_for('browse_movies'))
