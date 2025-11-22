@@ -363,17 +363,15 @@
     </div>
 
     <!-- Main Header -->
-    <header class="main-header">
-        <div class="container">
-            <div class="d-flex justify-content-between align-items-center">
-                <a href="/" class="brand-name">HybridReel</a>
-                <div class="d-flex gap-3">
-                    <a href="{{ url_for('my_ratings') }}" class="nav-link">My Ratings</a>
-                    <a href="{{ url_for('browse_movies') }}" class="nav-link">Browse Movies</a>
-                </div>
-            </div>
-        </div>
-    </header>
+ <div class="d-flex gap-3">
+    <a href="{{ url_for('browse_movies') }}" class="nav-link">Movies</a>
+    <a href="{{ url_for('my_ratings') }}" class="nav-link">My Ratings</a>
+    <a href="{{ url_for('recommend') }}" class="nav-link">Recommendations</a>
+    {% if session.get('userId') and not session.get('is_guest') %}
+    <a href="{{ url_for('profile') }}" class="nav-link">My Profile</a>
+    {% endif %}
+    <a href="{{ url_for('logout') }}" class="nav-link">Logout</a>
+</div>
 
     <!-- Page Header -->
     <div class="page-header">

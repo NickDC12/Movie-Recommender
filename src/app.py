@@ -16,6 +16,16 @@ recommender = HybridRecommender(k=30, collaborative_weight=0.7, content_weight=0
 print("Hybrid recommender initialized successfully.")
 
 
+# Jinja2 custom filter for converting timestamps to dates
+from datetime import datetime
+
+@app.template_filter('timestamp_to_date')
+def timestamp_to_date(timestamp):
+    #Convert Unix timestamp to readable date
+    if timestamp:
+        return datetime.fromtimestamp(timestamp).strftime('%B %d, %Y')
+    return 'Unknown'
+
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
