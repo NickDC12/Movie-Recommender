@@ -307,12 +307,9 @@
                         <p class="section-subtitle mb-3">New to HybridReel?</p>
                         <a href="{{ url_for('signup') }}" class="btn btn-outline w-100 mb-4">Create Account</a>
 
-                        <div class="divider" style="margin: 30px auto;"></div>
-
-                        <form method="post" class="d-inline">
-                            <input type="hidden" name="action" value="anonymous">
-                            <button type="submit" class="btn-link">Continue as Guest</button>
-                        </form>
+                        <div class="text-center mt-3">
+                        <a href="{{ url_for('guest_profiles') }}" class="btn-link">Browse as Guest Profile</a>
+                        </div>
                     </div>
                 </div>
             </div>

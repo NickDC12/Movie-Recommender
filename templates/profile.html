@@ -59,7 +59,7 @@
         }
 
         .page-header {
-            padding: 60px 0 40px;
+            padding: 65px 0 45px;
             text-align: center;
             border-bottom: 1px solid #e0e0e0;
         }
@@ -82,7 +82,7 @@
             border: 1px solid #e0e0e0;
             padding: 40px 30px;
             text-align: center;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
         }
 
         .stat-card:hover {
@@ -159,7 +159,7 @@
             font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 1.5px;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
         }
 
         .btn-primary:hover {
@@ -191,8 +191,6 @@
         </div>
     </div>
 
-    <!-- SEARCH FOR THIS SECTION IN YOUR profile.html (around line 220-228) -->
-<!-- AND REPLACE IT WITH THE CODE BELOW -->
 
     <header class="main-header">
         <div class="container">
@@ -249,7 +247,7 @@
                         <div class="genre-item">
                             <div class="genre-name">{{ genre['genres'] }}</div>
                             <div class="genre-stats">
-                                Avg Rating: {{ "%.1f"|format(genre['avg_rating']) }} ⭐ 
+                                Avg Rating: {{ "%.1f"|format(genre['avg_rating']) }} ⭐
                                 ({{ genre['count'] }} movies)
                             </div>
                         </div>
