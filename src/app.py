@@ -307,6 +307,15 @@ def add_rating():
         user_id = session['userId']
         movie_id = int(request.form['movieId'])
         rating = float(request.form['rating'])
+
+        # Server-side validation and rounding
+        if rating < 0.5 or rating > 5:
+            flash("Rating must be between 0.5 and 5.0.", "error")
+            return redirect(url_for('browse_movies'))
+
+        # Round to nearest 0.5 on server side as well
+        rating = round(rating * 2) / 2
+
         timestamp = int(time.time())
 
         conn = get_db_connection()
@@ -318,7 +327,7 @@ def add_rating():
         conn.close()
         flash(f"Your rating of {rating} ⭐ has been saved!", "success")
     except (ValueError, KeyError):
-        flash("Invalid rating submission.", "error")
+        flash("Invalid rating submission. Please enter a number between 0.5 and 5.0.", "error")
     return redirect(url_for('browse_movies'))
 
 
@@ -332,11 +341,16 @@ def edit_rating():
         user_id = session['userId']
         movie_id = int(request.form['movieId'])
         new_rating = float(request.form['rating'])
-        timestamp = int(time.time())
 
-        if new_rating < 0.5 or new_rating > 5.0:
-            flash("Rating must be between 0.5 and 5.0.", "error")
+        # Server-side validation and rounding
+        if new_rating < 0.0 or new_rating > 5:
+            flash("Rating must be between 0.0 and 5.0.", "error")
             return redirect(url_for('my_ratings'))
+
+        # Round to nearest 0.5
+        new_rating = round(new_rating * 2) / 2
+
+        timestamp = int(time.time())
 
         conn = get_db_connection()
         cursor = conn.execute(
@@ -354,7 +368,7 @@ def edit_rating():
         conn.commit()
         conn.close()
     except (ValueError, KeyError) as e:
-        flash("Invalid rating update.", "error")
+        flash("Invalid rating update. Please enter a number between 0.5 and 5.0.", "error")
 
     return redirect(url_for('my_ratings'))
 

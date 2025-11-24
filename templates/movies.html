@@ -318,6 +318,21 @@
             color: #991b1b;
         }
 
+        .validation-message {
+            color: #ef4444;
+            font-size: 12px;
+            margin-top: 5px;
+            font-style: italic;
+        }
+
+        .rating-input.valid {
+            border-color: #10b981 !important;
+        }
+
+        .rating-input.invalid {
+            border-color: #ef4444 !important;
+        }
+
         .btn-close {
             opacity: 0.3;
         }
@@ -543,30 +558,84 @@
             searchResults.classList.remove('show');
             searchInput.value = '';
 
-            // Create rating form modal or inline
-            const rating = prompt(`Rate "${movie.title}" (0.5 to 5.0):`);
+            const currentRating = movie.user_rating ? ` (Current: ${movie.user_rating})` : '';
+            const defaultValue = movie.user_rating ? movie.user_rating : '';
 
-            if (rating !== null && rating >= 0.5 && rating <= 5) {
-                // Submit rating
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = '/add_rating';
+            let rating = prompt(`Rate "${movie.title}"${currentRating}\n\nEnter rating from 0.5 to 5.0:`, defaultValue);
 
-                const movieIdInput = document.createElement('input');
-                movieIdInput.type = 'hidden';
-                movieIdInput.name = 'movieId';
-                movieIdInput.value = movie.movieId;
+            if (rating !== null && rating !== '') {
+                const ratingValue = parseFloat(rating);
 
-                const ratingInput = document.createElement('input');
-                ratingInput.type = 'hidden';
-                ratingInput.name = 'rating';
-                ratingInput.value = rating;
+                // Validate and round rating
+                const validatedRating = validateAndRoundRating(ratingValue);
 
-                form.appendChild(movieIdInput);
-                form.appendChild(ratingInput);
-                document.body.appendChild(form);
-                form.submit();
+                if (validatedRating.isValid) {
+                    // Submit rating
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '/add_rating';
+
+                    const movieIdInput = document.createElement('input');
+                    movieIdInput.type = 'hidden';
+                    movieIdInput.name = 'movieId';
+                    movieIdInput.value = movie.movieId;
+
+                    const ratingInput = document.createElement('input');
+                    ratingInput.type = 'hidden';
+                    ratingInput.name = 'rating';
+                    ratingInput.value = validatedRating.value;
+
+                    form.appendChild(movieIdInput);
+                    form.appendChild(ratingInput);
+                    document.body.appendChild(form);
+                    form.submit();
+                } else {
+                    alert(validatedRating.message);
+                    // Recursively call to allow user to try again
+                    showRatingForm(movie);
+                }
             }
+        }
+
+        // Validate and round rating to nearest 0.5
+        function validateAndRoundRating(rating) {
+            if (isNaN(rating)) {
+                return {
+                    isValid: false,
+                    message: 'Please enter a valid number (e.g., 3.5, 4.0)'
+                };
+            }
+
+            if (rating < 0.5 || rating > 5) {
+                return {
+                    isValid: false,
+                    message: 'Rating must be between 0.5 and 5.0'
+                };
+            }
+
+            // Round to nearest 0.5
+            const roundedRating = Math.round(rating * 2) / 2;
+
+            return {
+                isValid: true,
+                value: roundedRating,
+                message: `Rating rounded to ${roundedRating}`
+            };
+        }
+
+        function validateRatingInput(input) {
+            const value = parseFloat(input.value);
+            const validated = validateAndRoundRating(value);
+
+            if (!validated.isValid) {
+                alert(validated.message);
+                input.value = '';
+                input.focus();
+                return null;
+            }
+
+            input.value = validated.value;
+            return validated.value;
         }
 
         // Close search results when clicking outside
@@ -574,6 +643,20 @@
             if (!searchInput.contains(event.target) && !searchResults.contains(event.target)) {
                 searchResults.classList.remove('show');
             }
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const ratingInputs = document.querySelectorAll('.rating-input');
+
+            ratingInputs.forEach(input => {
+                input.addEventListener('blur', function() {
+                    validateRatingInput(this);
+                });
+
+                input.addEventListener('change', function() {
+                    validateRatingInput(this);
+                });
+            });
         });
 
         // Show results when clicking on input
