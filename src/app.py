@@ -25,7 +25,7 @@ def timestamp_to_date(timestamp):
     if timestamp:
         return datetime.fromtimestamp(timestamp).strftime('%B %d, %Y')
     return 'Unknown'
-
+# Decorator for protecting routes that are behind a login
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -403,6 +403,7 @@ def search_movies():
         WHERE title LIKE ? 
         LIMIT 10
     """
+    #Creates a dataframe to load top results from search
     movies_df = pd.read_sql_query(search_query, conn, params=(f'%{query}%',))
     conn.close()
 
