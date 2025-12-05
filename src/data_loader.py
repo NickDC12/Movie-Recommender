@@ -31,5 +31,4 @@ def load_movielens_data():
 
 
 if __name__ == '__main__':
-    # Allows us to run this script directly to populate the database
     load_movielens_data()

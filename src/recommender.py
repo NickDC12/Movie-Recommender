@@ -1,10 +1,10 @@
 import pandas as pd
 from surprise import Dataset, Reader, KNNWithMeans
 from src.database import get_db_connection
-
+# no longer in use code, used in hybrid_recommender now
 
 class SimpleRecommender:
-    # A KNN-based collaborative filtering recommender system.
+    # uses KNN to find similar users
 
     def __init__(self, k=30):
         # Initializes the recommender by loading data and training the model.

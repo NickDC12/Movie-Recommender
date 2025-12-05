@@ -9,7 +9,7 @@ import pandas as pd
 import time
 
 app = Flask(__name__, template_folder='../templates', static_folder='../static')
-app.secret_key = 'a-super-secret-key-that-you-should-change'
+app.secret_key = 'dev'
 
 print("Initializing hybrid recommender... this may take a moment.")
 recommender = HybridRecommender(k=30, collaborative_weight=0.7, content_weight=0.3)
@@ -61,7 +61,7 @@ def home():
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    # Login page for registered users"""
+    # Login page for registered users
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
@@ -95,7 +95,7 @@ def guest_profiles():
 
 @app.route('/api/guest-profiles')
 def api_guest_profiles():
-    #API endpoint to get demo profiles (optimized users with 10-15 ratings)
+    # gets some users with enough ratings to show as guests
     conn = get_db_connection()
 
     profiles = conn.execute('''
@@ -292,6 +292,7 @@ def browse_movies():
         session['is_anonymous'] = True
         flash(f"Welcome! You've been assigned temporary ID: {new_user_id}", "success")
 
+    # Create a temporary guest account so the recommender doesn't crash
     conn = get_db_connection()
     movies_df = pd.read_sql_query("SELECT movieId, title, genres FROM movies LIMIT 100", conn)
     conn.close()
@@ -313,7 +314,7 @@ def add_rating():
             flash("Rating must be between 0.5 and 5.0.", "error")
             return redirect(url_for('browse_movies'))
 
-        # Round to nearest 0.5 on server side as well
+        # Round to nearest 0.5 because the star UI only supports half-stars
         rating = round(rating * 2) / 2
 
         timestamp = int(time.time())

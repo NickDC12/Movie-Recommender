@@ -8,6 +8,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
+        /* TODO: Merge this with style.css after the final backend integration is stable.
+           Keeping styles local for now to avoid merge conflicts with partner's code. */
         * {
             margin: 0;
             padding: 0;
@@ -381,7 +383,6 @@
         </div>
     </header>
 
-    <!-- User ID Alert -->
     {% if session.get('userId') %}
     <div class="user-alert">
         <div class="container">
@@ -397,7 +398,6 @@
     </div>
     {% endif %}
 
-    <!-- Page Header -->
     <div class="page-header">
         <div class="container">
             <h1 class="page-title">Rate Movies</h1>
@@ -405,7 +405,6 @@
         </div>
     </div>
 
-    <!-- Flash Messages -->
     <div class="container mt-4">
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
@@ -419,7 +418,6 @@
         {% endwith %}
     </div>
 
-    <!-- Search Section -->
     <section class="search-section">
         <div class="container">
             <div class="search-container">
@@ -440,7 +438,6 @@
         </div>
     </section>
 
-    <!-- Movies Section -->
     <section class="movie-section">
         <div class="container">
             <div class="section-header">Popular Movies</div>
@@ -472,7 +469,6 @@
                 {% endfor %}
             </div>
 
-            <!-- Action Button -->
             <div class="text-center mt-5">
                 <a href="/recommend" class="btn-action">Get Recommendations</a>
             </div>
@@ -481,7 +477,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-    <!-- Search Script -->
     <script>
         const searchInput = document.getElementById('movieSearch');
         const searchResults = document.getElementById('searchResults');
@@ -507,7 +502,7 @@
             searchResults.appendChild(loadingSpinner);
             searchResults.classList.add('show');
 
-            // Debounce: wait 300ms after user stops typing
+            // Debounce: Wait 300ms so we don't spam the server on every keystroke
             searchTimeout = setTimeout(() => {
                 fetchSearchResults(query);
             }, 300);
@@ -561,6 +556,7 @@
             const currentRating = movie.user_rating ? ` (Current: ${movie.user_rating})` : '';
             const defaultValue = movie.user_rating ? movie.user_rating : '';
 
+
             let rating = prompt(`Rate "${movie.title}"${currentRating}\n\nEnter rating from 0.5 to 5.0:`, defaultValue);
 
             if (rating !== null && rating !== '') {
@@ -570,7 +566,8 @@
                 const validatedRating = validateAndRoundRating(ratingValue);
 
                 if (validatedRating.isValid) {
-                    // Submit rating
+                    // WORKAROUND: Create a hidden form to trigger a standard POST
+                    // request so the page redirects properly after rating.
                     const form = document.createElement('form');
                     form.method = 'POST';
                     form.action = '/add_rating';

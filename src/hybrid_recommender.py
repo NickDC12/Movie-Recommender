@@ -8,10 +8,11 @@ from src.database import get_db_connection
 
 class HybridRecommender:
 
-    #Collaborative and Content-Based Filtering (genre)
+    # Collaborative and Content-Based Filtering (genre)
 
     def __init__(self, k=30, collaborative_weight=0.7, content_weight=0.3):
 
+        # Collab filtering usually gives better results, so weighting it higher
         self.collaborative_weight = collaborative_weight
         self.content_weight = content_weight
         self.model = None
@@ -24,7 +25,7 @@ class HybridRecommender:
         self._load_and_train(k=k)
 
     def _load_and_train(self, k: int):
-        #Loads and train data for both collaborative and content-based models.
+        # Loads and train data for both collaborative and content-based models.
         print("Loading data and training hybrid model...")
 
         # Load data from the database
@@ -149,7 +150,7 @@ class HybridRecommender:
             rated_movies_inner_ids = self.trainset.ur[inner_user_id]
             rated_movie_ids = {self.trainset.to_raw_iid(inner_id) for inner_id, _ in rated_movies_inner_ids}
         except ValueError:
-            # New user - only use content-based filtering
+            # User not in training set (Cold Start problem), falling back to content-based
             print(f"New user {user_id}, using content-based filtering only.")
             rated_movie_ids = set()
 
@@ -167,7 +168,7 @@ class HybridRecommender:
         # Filter out already-rated movies
         movies_to_predict = self.all_movie_ids - rated_movie_ids
 
-        # Limit predictions for faster responses
+        # Cap at 10k predictions to keep UI responsive
         if len(movies_to_predict) > 10000:
             print(f"Limiting predictions to 10000 movies for speed")
             movies_to_predict = list(movies_to_predict)[:10000]
